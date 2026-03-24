@@ -1,1 +1,30 @@
-.env
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+notebook/4_integration.ipynb
+# Data files
+#data/raw/
+#data/preprocessed/
+#*.csv
+
+# Models (optional)
+#notebook/model
+#notebook/scaler
+
+# Notebook checkpoints
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
