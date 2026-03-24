@@ -34,94 +34,109 @@ class absenteeism_model():
       
         def __init__(self, model_file, scaler_file):
             # read the 'model' and 'scaler' files which were saved
-            with open('../model/model','rb') as model_file, open('../model/scaler', 'rb') as scaler_file:
+            with open('model','rb') as model_file, open('scaler', 'rb') as scaler_file:
                 self.reg = pickle.load(model_file)
                 self.scaler = pickle.load(scaler_file)
                 self.data = None
         
-        # take a data file (*.csv) and preprocess it in the same way
+        # take a data file (*.csv) and preprocess it in the same way as in the lectures
         def load_and_clean_data(self, data_file):
             
             # import the data
             df = pd.read_csv(data_file,delimiter=',')
+
+            df.columns = (df.columns
+                          .str.strip() #remove white space from head & tail
+                          .str.replace(' ', '_') #replace whitespace with _
+                          .str.lower()) #lowercase the columns name
+            
             # store the data in a new variable for later use
             self.df_with_predictions = df.copy()
+
             # drop the 'ID' column
-            df = df.drop(['ID'], axis = 1)
+            df = df.drop(['id'], axis = 1)
+
             # to preserve the code we've created in the previous section, we will add a column with 'NaN' strings
-            df['Absenteeism Time in Hours'] = 'NaN'
+            df['absenteeism_time_in_hours'] = 'NaN'
 
             # create a separate dataframe, containing dummy values for ALL avaiable reasons
-            reason_columns = pd.get_dummies(df['Reason for Absence'], drop_first = True)
+            reason_columns = pd.get_dummies(df['reason_for_absence'], drop_first = True, dtype=int)
             
             # split reason_columns into 4 types
-            reason_type_1 = reason_columns.loc[:,1:14].max(axis=1)
-            reason_type_2 = reason_columns.loc[:,15:17].max(axis=1)
-            reason_type_3 = reason_columns.loc[:,18:21].max(axis=1)
-            reason_type_4 = reason_columns.loc[:,22:].max(axis=1)
+            reason_type_1 = reason_columns.loc[:,1:14].any(axis=1).astype(int)
+            reason_type_2 = reason_columns.loc[:,15:17].any(axis=1).astype(int)
+            reason_type_3 = reason_columns.loc[:,18:21].any(axis=1).astype(int)
+            reason_type_4 = reason_columns.loc[:,22:].any(axis=1).astype(int)
             
             # to avoid multicollinearity, drop the 'Reason for Absence' column from df
-            df = df.drop(['Reason for Absence'], axis = 1)
+            df = df.drop(['reason_for_absence'], axis = 1)
             
             # concatenate df and the 4 types of reason for absence
             df = pd.concat([df, reason_type_1, reason_type_2, reason_type_3, reason_type_4], axis = 1)
             
-            # assign names to the 4 reason type columns
-            # note: there is a more universal version of this code, however the following will best suit our current purposes             
-            column_names = ['Date', 'Transportation Expense', 'Distance to Work', 'Age',
-                           'Daily Work Load Average', 'Body Mass Index', 'Education', 'Children',
-                           'Pet', 'Absenteeism Time in Hours', 'Reason_1', 'Reason_2', 'Reason_3', 'Reason_4']
+            # assign names to the 4 reason type columns           
+            column_names = ['date', 'transportation_expense', 'distance_to_work', 'age',
+                           'daily_work_load_average', 'body_mass_index', 'education', 'children',
+                           'pets', 'absenteeism_time_in_hours', 'reason_1', 'reason_2', 'reason_3', 'reason_4']
             df.columns = column_names
 
+            # ensure reason columns are integers
+            df['reason_1'] = df['reason_1'].astype(int)
+            df['reason_2'] = df['reason_2'].astype(int)
+            df['reason_3'] = df['reason_3'].astype(int)
+            df['reason_4'] = df['reason_4'].astype(int)
+
             # re-order the columns in df
-            column_names_reordered = ['Reason_1', 'Reason_2', 'Reason_3', 'Reason_4', 'Date', 'Transportation Expense', 
-                                      'Distance to Work', 'Age', 'Daily Work Load Average', 'Body Mass Index', 'Education', 
-                                      'Children', 'Pet', 'Absenteeism Time in Hours']
+            column_names_reordered = ['reason_1', 'reason_2', 'reason_3', 'reason_4', 'date', 'transportation_expense', 
+                                      'distance_to_work', 'age', 'daily_work_load_average', 'body_mass_index', 'education', 
+                                      'children', 'pets', 'absenteeism_time_in_hours']
             df = df[column_names_reordered]
       
             # convert the 'Date' column into datetime
-            df['Date'] = pd.to_datetime(df['Date'], format='%d/%m/%Y')
+            df['date'] = pd.to_datetime(df['date'], format='%d/%m/%Y')
 
             # create a list with month values retrieved from the 'Date' column
             list_months = []
             for i in range(df.shape[0]):
-                list_months.append(df['Date'][i].month)
+                list_months.append(df['date'][i].month)
 
             # insert the values in a new column in df, called 'Month Value'
-            df['Month Value'] = list_months
+            df['month_value'] = list_months
 
             # create a new feature called 'Day of the Week'
-            df['Day of the Week'] = df['Date'].apply(lambda x: x.weekday())
+            df['day_of_the_week'] = df['date'].apply(lambda x: x.weekday())
 
 
             # drop the 'Date' column from df
-            df = df.drop(['Date'], axis = 1)
+            df = df.drop(['date'], axis = 1)
 
             # re-order the columns in df
-            column_names_upd = ['Reason_1', 'Reason_2', 'Reason_3', 'Reason_4', 'Month Value', 'Day of the Week',
-                                'Transportation Expense', 'Distance to Work', 'Age',
-                                'Daily Work Load Average', 'Body Mass Index', 'Education', 'Children',
-                                'Pet', 'Absenteeism Time in Hours']
+            column_names_upd = ['reason_1', 'reason_2', 'reason_3', 'reason_4', 'month_value', 'day_of_the_week',
+                                'transportation_expense', 'distance_to_work', 'age',
+                                'daily_work_load_average', 'body_mass_index', 'education', 'children',
+                                'pets', 'absenteeism_time_in_hours']
             df = df[column_names_upd]
 
-
             # map 'Education' variables; the result is a dummy
-            df['Education'] = df['Education'].map({1:0, 2:1, 3:1, 4:1})
+            df['education'] = df['education'].map({1:0, 2:1, 3:1, 4:1})
 
             # replace the NaN values
             df = df.fillna(value=0)
 
             # drop the original absenteeism time
-            df = df.drop(['Absenteeism Time in Hours'],axis=1)
+            df = df.drop(['absenteeism_time_in_hours'],axis=1)
             
             # drop the variables we decide we don't need
-            df = df.drop(['Day of the Week','Daily Work Load Average','Distance to Work'],axis=1)
+            df = df.drop(['day_of_the_week','daily_work_load_average','distance_to_work'],axis=1)
+            
+            # reorder columns to match training data order
+            df = df[['reason_1', 'reason_2', 'reason_3', 'reason_4', 'month_value', 'transportation_expense', 'age', 'body_mass_index', 'education', 'children', 'pets']]
             
             # we have included this line of code if you want to call the 'preprocessed data'
             self.preprocessed_data = df.copy()
             
             # we need this line so we can use it in the next functions
-            self.data = self.scaler.transform(df)
+            self.data = self.scaler.transform(df).values
     
         # a function which outputs the probability of a data point to be 1
         def predicted_probability(self):
